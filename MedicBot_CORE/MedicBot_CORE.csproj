@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DSharpPlus" Version="4.0.0-nightly-00625" />
+    <PackageReference Include="DSharpPlus.CommandsNext" Version="4.0.0-nightly-00625" />
+    <PackageReference Include="DSharpPlus.Interactivity" Version="4.0.0-nightly-00625" />
+    <PackageReference Include="DSharpPlus.VoiceNext" Version="4.0.0-nightly-00625" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.11.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="libopus.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="libsodium.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="opus.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="sodium.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>
