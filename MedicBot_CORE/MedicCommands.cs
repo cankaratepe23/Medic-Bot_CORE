@@ -187,7 +187,7 @@ namespace MedicBot
                 queuedSongs.Add(Path.GetFileNameWithoutExtension(filePath));
                 return;
             }
-            voiceNextConnection.SendSpeaking(true);
+            await voiceNextConnection.SendSpeakingAsync(true);
             nowPlaying = true;
             await ctx.Client.UpdateStatusAsync(new DiscordActivity(Path.GetFileNameWithoutExtension(filePath), ActivityType.Playing));
 
@@ -206,7 +206,7 @@ namespace MedicBot
 
             await voiceNextConnection.WaitForPlaybackFinishAsync();
 
-            voiceNextConnection.SendSpeaking(false);
+            await voiceNextConnection.SendSpeakingAsync(false);
             nowPlaying = false;
             if (queuedSongs.Count != 0)
             {

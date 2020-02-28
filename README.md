@@ -1,7 +1,7 @@
 # Medic-Bot || A (very painful) DSharpPlus Bot
 If you want to run this bot on your own machine (for some reason?), you can clone this repo, or [the pre-built binaries](https://github.com/Mmedic23/MedicBotCoreReleases).
 
-The source is targeted for .NET Core 2.2 but you should be able to create your own project for whatever framework you have installed and the source code should work fine.
+The source is targeted for .NET Core 3.1 but you should be able to create your own project for whatever framework you have installed and the source code should work fine.
 
 This program currently uses DSharpPlus Nigthly, which means you might not able to `nuget restore` it easily. Nightly builds are available on MyGet, and you can get the links from DSharpPlus' GitHub repo.
 
