@@ -122,7 +122,6 @@ namespace MedicBot
             nowPlaying = false;
             queuedSongs.Clear();
             voiceNextConnection.Disconnect();
-            voiceNextConnection = null;
         }
         #endregion
 
@@ -148,8 +147,8 @@ namespace MedicBot
 
         [Command("play")]
         [Aliases("oynatbakalım")]
-        [Description("Bir ses oynatır.")]
-        public async Task Play(CommandContext ctx, [Description("Çalınacak sesin adı. `#liste` komutuyla tüm seslerin listesini DM ile alabilirsiniz. En son çalan sesi tekrar çalmak için \"!!\" yazabilirsiniz.")][RemainingText] string fileName)
+        [Description("Bir ses oynatır. Bir dosya ile birlikte gönderildiğinde, birlikte gönderildiği ses dosyasını çalar.")]
+        public async Task Play(CommandContext ctx, [Description("Çalınacak sesin adı. `#liste` komutuyla tüm seslerin listesini DM ile alabilirsiniz. En son çalan sesi tekrar çalmak için \"!!\" yazabilirsiniz. Ses adı YouTube linki de olabilir.")][RemainingText] string fileName)
         {
             //playerCancellationToken = new CancellationTokenSource();
             if (fileName == "!!")
@@ -168,10 +167,18 @@ namespace MedicBot
                     {
                         FileName = "youtube-dl",
                         Arguments = "-f bestaudio -g " + fileName,
-                        RedirectStandardOutput = true
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true
                     };
                     Process youtubeDl = Process.Start(ydlStartInfo);
                     youtubeDl.WaitForExit();
+                    string stderr = youtubeDl.StandardError.ReadToEnd();
+                    if (stderr != null)
+                    {
+                        await ctx.RespondAsync(stderr);
+                        await ctx.RespondAsync("You can try sending the file directly!");
+                        throw new Exception("Content is unavailable to the VPS. (Geo-restriction)");
+                    }
                     filePath = youtubeDl.StandardOutput.ReadToEnd();
                     youtubeDl.Dispose();
                 }
@@ -193,6 +200,11 @@ namespace MedicBot
                         throw new InvalidOperationException("File not found.");
                     }
                 }
+            }
+            else if (ctx.Message.Attachments.Count == 1)
+            {
+                DiscordAttachment attachedFile = ctx.Message.Attachments.First();
+                filePath = attachedFile.Url;
             }
             else
             {
@@ -543,6 +555,41 @@ namespace MedicBot
             {
                 await ctx.RespondWithFileAsync(fs);
             }
+        }
+
+        [Command("mp3")]
+        [Description("Bir ses kaydını mp3 dosyası olarak gönderir.")]
+        public async Task Mp3(
+            CommandContext ctx,
+            [Description("Sesin kayıtlardaki adı.")][RemainingText]string audioName)
+        {
+            if (String.IsNullOrWhiteSpace(audioName))
+            {
+                throw new ArgumentException("Audio name cannot be empty.");
+            }
+            else if (audioName == "!!")
+            {
+                audioName = lastPlayedSong;
+            }
+            string filePath = Path.Combine(Directory.GetCurrentDirectory(), "res", IsSafeServer(ctx.Guild.Id) ? "safe" : "", audioName + ".opus");
+            if (!File.Exists(filePath))
+            {
+                await ctx.RespondAsync("Öyle bir şey yok. ._.");
+                throw new InvalidOperationException("File not found.");
+            }
+            string mp3Path = Path.Combine(Directory.GetCurrentDirectory(), "res", "işlenecekler", Path.GetFileNameWithoutExtension(filePath)) + ".mp3";
+            ProcessStartInfo ffmpegInfo = new ProcessStartInfo()
+            {
+                FileName = "ffmpeg.exe",
+                Arguments = "-y -i \"" + filePath + "\" \"" + mp3Path + "\""
+            };
+            Process ffmpeg = Process.Start(ffmpegInfo);
+            ffmpeg.WaitForExit();
+            using (FileStream fs = new FileStream(mp3Path, FileMode.Open))
+            {
+                await ctx.RespondWithFileAsync(fs);
+            }
+            File.Delete(mp3Path);
         }
 
         #endregion
