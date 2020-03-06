@@ -278,6 +278,23 @@ namespace MedicBot
                 voiceNextConnection = null;
             }
         }
+
+
+        [Command("playall")]
+        [Aliases("listplay", "playrange")]
+        [Description("Girilen kelimeyle eşleşen tüm sesleri oynatır.")]
+        public async Task PlayRange(CommandContext ctx, [Description("Listede aranacak kelime.")][RemainingText] string searchString)
+        {
+            List<string> matchingFileNames = GetAllFiles(ctx.Guild.Id).Where(f => f.Contains(searchString)).Select(f => f = Path.GetFileNameWithoutExtension(f)).ToList();
+            string playerString = "";
+            foreach (string fileName in matchingFileNames)
+            {
+                playerString += fileName + ", ";
+            }
+            playerString = playerString.Substring(0, playerString.Length - 2);
+            var fakeContext = ctx.CommandsNext.CreateFakeContext(ctx.User, ctx.Channel, "#play " + playerString, ctx.Prefix, ctx.CommandsNext.RegisteredCommands["play"], playerString);
+            await Play(fakeContext, playerString);
+        }
         #endregion
 
         #region Commands related to metadata requests.
@@ -758,14 +775,14 @@ namespace MedicBot
             return UserId == UId.ToString();
         }
 
-        public string[] GetAllFiles(ulong id)
+        public string[] GetAllFiles(ulong guildId)
         {
-            return Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "res", IsSafeServer(id) ? "safe" : ""), "*.opus");
+            return Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "res", IsSafeServer(guildId) ? "safe" : ""), "*.opus");
         }
 
-        public bool IsSafeServer(ulong id)
+        public bool IsSafeServer(ulong guildId)
         {
-            return File.ReadLines("safe-guilds.txt").Contains(id.ToString());
+            return File.ReadLines("safe-guilds.txt").Contains(guildId.ToString());
         }
         /*
         public async Task OnVoiceReceived(VoiceReceiveEventArgs ea)
