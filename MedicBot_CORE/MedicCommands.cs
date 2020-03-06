@@ -286,6 +286,7 @@ namespace MedicBot
         public async Task PlayRange(CommandContext ctx, [Description("Listede aranacak kelime.")][RemainingText] string searchString)
         {
             List<string> matchingFileNames = GetAllFiles(ctx.Guild.Id).Where(f => f.Contains(searchString)).Select(f => f = Path.GetFileNameWithoutExtension(f)).ToList();
+            matchingFileNames.Sort();
             string playerString = "";
             foreach (string fileName in matchingFileNames)
             {
