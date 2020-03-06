@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using YoutubeSearch;
 
@@ -23,6 +24,8 @@ namespace MedicBot
         private List<string> queuedSongs = new List<string>();
         private string lastPlayedSong = "";
 
+        //CancellationTokenSource playerCancellationToken = new CancellationTokenSource();
+
         #region Commands related to connectivity.
         [Command("disconnect")]
         [Hidden]
@@ -36,9 +39,7 @@ namespace MedicBot
                 await ctx.RespondWithFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "res", "hahaha_no.gif"), "Bu komutu sadece " + medicUser.Mention + " kullanabilir.");
                 return;
             }
-            //Log("DISCONNECT: Got disconnect signal.");
             await ctx.Client.DisconnectAsync();
-            //Log("DISCONNECT: Client disconnected BY " + ctx.User.Username);
             Environment.Exit(0);
         }
 
@@ -61,12 +62,10 @@ namespace MedicBot
             else if (channelID == 0)
             {
                 voiceNextConnection = await voiceNext.ConnectAsync(ctx.Member.VoiceState.Channel);
-                //Log(String.Format("JOIN: Bot joined to voice channel {0}({1})", voiceNextConnection.Channel.Id, voiceNextConnection.Channel.Name));
             }
             else
             {
                 voiceNextConnection = await voiceNext.ConnectAsync(ctx.Guild.GetChannel(channelID));
-                //Log(String.Format("JOIN: Bot joined to voice channel {0}({1})", voiceNextConnection.Channel.Id, voiceNextConnection.Channel.Name));
             }
             //this.ffmpegs = new ConcurrentDictionary<uint, Process>();
             //voiceNextConnection.VoiceReceived += OnVoiceReceived;
@@ -83,7 +82,7 @@ namespace MedicBot
                 await ctx.RespondAsync(IsSafeServer(ctx.Guild.Id) ? "Bot zaten ses kanalına bağlı." : "Buradayız işte lan ne join atıyon");
                 throw new InvalidOperationException("Already connected, no need to reconnect.");
             }
-            IEnumerable<DiscordChannel> voiceChannels = ctx.Guild.Channels.Where(ch => ch.Value.Type == DSharpPlus.ChannelType.Voice && ch.Value.Name == channelName).Select(x => x.Value);
+            var voiceChannels = ctx.Guild.Channels.Where(ch => ch.Value.Type == DSharpPlus.ChannelType.Voice && ch.Value.Name.Contains(channelName, StringComparison.OrdinalIgnoreCase)).Select(x => x.Value);
             if (voiceChannels.Count() == 1)
             {
                 voiceNextConnection = await voiceNext.ConnectAsync(voiceChannels.FirstOrDefault());
@@ -119,12 +118,11 @@ namespace MedicBot
             }
             this.ffmpegs = null;
             */
-            //await voiceNextConnection.SendSpeakingAsync(false);
+            await voiceNextConnection.SendSpeakingAsync(false);
             nowPlaying = false;
             queuedSongs.Clear();
-            //Log(String.Format("LEAVE: Bot is leaving voice channel {0}({1})", voiceNextConnection.Channel.Id, voiceNextConnection.Channel.Name));
             voiceNextConnection.Disconnect();
-            //Log("LEAVE: Bot left the voice channel.");
+            voiceNextConnection = null;
         }
         #endregion
 
@@ -134,7 +132,15 @@ namespace MedicBot
         [Description("Bot ses çalıyorsa susturur.")]
         public async Task Stop(CommandContext ctx)
         {
-            queuedSongs.Clear();
+            if (queuedSongs != null)
+            {
+                queuedSongs.Clear();
+            }
+            //var vc = ctx.Client.GetVoiceNext();
+            //var vcc = vc.GetConnection(ctx.Guild);
+            //var ts = vcc.GetTransmitStream();
+            //await ts.FlushAsync();
+            //await ts.DisposeAsync();
             await ctx.Client.UpdateStatusAsync();
             await Leave(ctx);
             await Join(ctx);
@@ -145,15 +151,48 @@ namespace MedicBot
         [Description("Bir ses oynatır.")]
         public async Task Play(CommandContext ctx, [Description("Çalınacak sesin adı. `#liste` komutuyla tüm seslerin listesini DM ile alabilirsiniz. En son çalan sesi tekrar çalmak için \"!!\" yazabilirsiniz.")][RemainingText] string fileName)
         {
+            //playerCancellationToken = new CancellationTokenSource();
             if (fileName == "!!")
             {
                 fileName = lastPlayedSong;
             }
             string filePath;
             bool disconnectAfterPlaying = false;
+            bool isUrl = false;
             if (fileName != null)
             {
-                filePath = Path.Combine(Directory.GetCurrentDirectory(), "res", IsSafeServer(ctx.Guild.Id) ? "safe" : "" , fileName + ".opus");
+                if (Uri.TryCreate(fileName, UriKind.Absolute, out Uri uriResult) && (uriResult.Scheme == Uri.UriSchemeHttps || uriResult.Scheme == Uri.UriSchemeHttp))
+                {
+                    isUrl = true;
+                    ProcessStartInfo ydlStartInfo = new ProcessStartInfo()
+                    {
+                        FileName = "youtube-dl",
+                        Arguments = "-f bestaudio -g " + fileName,
+                        RedirectStandardOutput = true
+                    };
+                    Process youtubeDl = Process.Start(ydlStartInfo);
+                    youtubeDl.WaitForExit();
+                    filePath = youtubeDl.StandardOutput.ReadToEnd();
+                    youtubeDl.Dispose();
+                }
+                else
+                {
+                    if (fileName.Contains(','))
+                    {
+                        var queue = fileName.Split(',').Select(s => s.Trim()).ToList();
+                        fileName = queue.First();
+                        queue.RemoveAt(0);
+                        queuedSongs.AddRange(queue);
+                    }
+
+                    filePath = Path.Combine(Directory.GetCurrentDirectory(), "res", IsSafeServer(ctx.Guild.Id) ? "safe" : "", fileName + ".opus");
+
+                    if (!File.Exists(filePath))
+                    {
+                        await ctx.RespondAsync("Öyle bir şey yok. ._.");
+                        throw new InvalidOperationException("File not found.");
+                    }
+                }
             }
             else
             {
@@ -161,6 +200,7 @@ namespace MedicBot
                 string[] allFiles = GetAllFiles(ctx.Guild.Id);
                 filePath = allFiles[rnd.Next(allFiles.Length)];
             }
+
             var voiceNext = ctx.Client.GetVoiceNext();
             var voiceNextConnection = voiceNext.GetConnection(ctx.Guild);
             if (voiceNextConnection == null)
@@ -168,16 +208,6 @@ namespace MedicBot
                 await Join(ctx);
                 voiceNextConnection = voiceNext.GetConnection(ctx.Guild);
                 disconnectAfterPlaying = true;
-            }
-            if (!File.Exists(filePath))
-            {
-                await ctx.RespondAsync("Öyle bir şey yok. ._.");
-                if (disconnectAfterPlaying)
-                {
-                    await Leave(ctx);
-                    voiceNextConnection = null;
-                }
-                throw new InvalidOperationException("File not found.");
             }
 
             lastPlayedSong = fileName == null ? Path.GetFileNameWithoutExtension(filePath) : fileName;
@@ -189,7 +219,24 @@ namespace MedicBot
             }
             await voiceNextConnection.SendSpeakingAsync(true);
             nowPlaying = true;
-            await ctx.Client.UpdateStatusAsync(new DiscordActivity(Path.GetFileNameWithoutExtension(filePath), ActivityType.Playing));
+            if (isUrl)
+            {
+                ProcessStartInfo ydlStartInfo = new ProcessStartInfo()
+                {
+                    FileName = "youtube-dl",
+                    Arguments = "-f bestaudio --get-title " + fileName,
+                    RedirectStandardOutput = true
+                };
+                Process youtubeDl = Process.Start(ydlStartInfo);
+                youtubeDl.WaitForExit();
+                string songName = youtubeDl.StandardOutput.ReadToEnd();
+                youtubeDl.Dispose();
+                await ctx.Client.UpdateStatusAsync(new DiscordActivity(songName, ActivityType.Playing));
+            }
+            else
+            {
+                await ctx.Client.UpdateStatusAsync(new DiscordActivity(Path.GetFileNameWithoutExtension(filePath), ActivityType.Playing));
+            }
 
             var psi = new ProcessStartInfo
             {
@@ -198,14 +245,12 @@ namespace MedicBot
                 RedirectStandardOutput = true,
                 UseShellExecute = false
             };
-            var ffmpeg = Process.Start(psi);
-            var ffout = ffmpeg.StandardOutput.BaseStream;
+            Process ffmpegPlayer = Process.Start(psi);
+            var ffout = ffmpegPlayer.StandardOutput.BaseStream;
             VoiceTransmitStream transmitStream = voiceNextConnection.GetTransmitStream();
             await ffout.CopyToAsync(transmitStream);
             await transmitStream.FlushAsync();
-
             await voiceNextConnection.WaitForPlaybackFinishAsync();
-
             await voiceNextConnection.SendSpeakingAsync(false);
             nowPlaying = false;
             if (queuedSongs.Count != 0)
@@ -345,7 +390,6 @@ namespace MedicBot
 
         #region Commands related to adding, managing and removing audio files.
         [Command("ekle")]
-        [Aliases("indir")]
         [Description("Verilen linkteki sesi, verilen süre parametrelerine göre ayarlayıp botun ses listesinde çalınmak üzere ekler.")]
         public async Task Add(
             CommandContext ctx,
@@ -354,7 +398,6 @@ namespace MedicBot
             [Description("İlgili bölümün, linkteki videoda saniye cinsinden uzunluğu. Örn. 5.8")]string durationSec,
             [Description("Sesin kayıtlardaki adı. Örn. #play [gireceğiniz ad] komutuyla çalmak için.")][RemainingText]string audioName)
         {
-            Log("ADD: Add command triggered BY " + ctx.User.Username + "(" + ctx.User.Id + ") :: " + ctx.Message.Content);
             if (checkAudioExists)
             {
                 if (Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "res"), "*.opus").Contains(Path.Combine(Directory.GetCurrentDirectory(), "res", audioName + ".opus")))
@@ -363,35 +406,40 @@ namespace MedicBot
                     throw new InvalidOperationException("Audio file with same name already exists.");
                 }
             }
+            else
+            {
+                File.Delete(Path.Combine(Directory.GetCurrentDirectory(), "res", audioName + ".opus"));
+            }
             checkAudioExists = true;
 
             ProcessStartInfo ydlStartInfo = new ProcessStartInfo()
             {
                 FileName = "youtube-dl",
-                Arguments = "--max-filesize 10M -f bestaudio " + URL + " -o \"" + audioName + ".webm\"",
-                WorkingDirectory = Path.Combine(Directory.GetCurrentDirectory(), "res", "işlenecekler")
+                Arguments = "-f bestaudio -g " + URL,
+                RedirectStandardOutput = true
             };
             Process youtubeDl = Process.Start(ydlStartInfo);
             youtubeDl.WaitForExit();
+            string downloadLink = youtubeDl.StandardOutput.ReadToEnd();
             youtubeDl.Dispose();
 
             ProcessStartInfo ffmpegStartInfo = new ProcessStartInfo()
             {
                 FileName = "ffmpeg",
-                Arguments = "-ss " + startSec + " -t " + durationSec + " -i \"" + audioName + ".webm\" -b:a 128K -metadata comment=\"" + URL + "\" -metadata author=\"" + ctx.User.Id + "\" \"" + audioName + ".opus\"",
+                Arguments =
+                "-ss " + startSec +
+                " -t " + durationSec +
+                " -i \"" + downloadLink + "\" -filter:a loudnorm=I=-12:TP=0:LRA=11 " +
+                "-b:a 128K -metadata comment=\"" + URL +
+                "\" -metadata author=\"" + ctx.User.Id +
+                "\" \"" + audioName + ".opus\"",
                 WorkingDirectory = Path.Combine(Directory.GetCurrentDirectory(), "res", "işlenecekler")
             };
             Process ffmpeg = Process.Start(ffmpegStartInfo);
             ffmpeg.WaitForExit();
             ffmpeg.Dispose();
             File.Delete(Path.Combine(Directory.GetCurrentDirectory(), "res", "işlenecekler", audioName + ".webm"));
-            if (File.Exists(Path.Combine(Directory.GetCurrentDirectory(), "res", audioName + ".opus")))
-            {
-                File.Delete(Path.Combine(Directory.GetCurrentDirectory(), "res", audioName + ".opus"));
-            }
-
             File.Move(Path.Combine(Directory.GetCurrentDirectory(), "res", "işlenecekler", audioName + ".opus"), Path.Combine(Directory.GetCurrentDirectory(), "res", audioName + ".opus"));
-            Log("ADD: Added " + audioName + " FROM " + URL);
         }
 
         [Command("intro")]
@@ -416,7 +464,6 @@ namespace MedicBot
                 throw new InvalidOperationException("File not found.");
             }
             File.Copy(Path.Combine(Directory.GetCurrentDirectory(), "res", audioName + ".opus"), Path.Combine(Directory.GetCurrentDirectory(), "res", ctx.User.Id.ToString(), audioName + ".opus"));
-            Log(string.Format("INTRO: {0} set as intro FOR {1}({2})", audioName, ctx.User.Username, ctx.User.Id));
         }
 
 
@@ -430,7 +477,6 @@ namespace MedicBot
             [Description("İlgili bölümün, linkteki videoda saniye cinsinden uzunluğu. Örn. 5.8")]string durationSec,
             [Description("Sesin kayıtlardaki adı.")][RemainingText]string audioName)
         {
-            Log("EDIT: Edit command triggered BY " + ctx.User.Username + "(" + ctx.User.Id + ") :: " + ctx.Message.Content);
             if (!File.Exists(Path.Combine(Directory.GetCurrentDirectory(), "res", audioName + ".opus")))
             {
                 await ctx.RespondAsync("Bu isme sahip ses kaydı bulunamadı. Lütfen `#ekle` komutunu kullanın.");
@@ -442,7 +488,6 @@ namespace MedicBot
                 throw new InvalidOperationException("The user trying to edit the file is not the owner of the file.");
             }
             checkAudioExists = false;
-            Log(string.Format("EDIT: Command successfully accessed BY {0}({1}) FOR {2}", ctx.User.Username, ctx.User.Id, audioName));
             //await ctx.CommandsNext.SudoAsync(ctx.User, ctx.Channel, string.Format("#ekle {0} {1} {2} {3}", URL, startSec, durationSec, audioName));
             await ctx.CommandsNext.ExecuteCommandAsync(ctx.CommandsNext.CreateFakeContext(ctx.User, ctx.Channel, string.Format("#ekle {0} {1} {2} {3}", URL, startSec, durationSec, audioName), "#", ctx.CommandsNext.RegisteredCommands.Where(c => c.Key == "ekle").FirstOrDefault().Value, string.Format("{0} {1} {2} {3}", URL, startSec, durationSec, audioName)));
         }
@@ -454,7 +499,10 @@ namespace MedicBot
             CommandContext ctx,
             [Description("Sesin kayıtlardaki adı.")][RemainingText]string audioName)
         {
-            Log("DELETE: Delete command triggered BY " + ctx.User.Username + "(" + ctx.User.Id + ") :: " + ctx.Message.Content);
+            if (String.IsNullOrWhiteSpace(audioName))
+            {
+                throw new ArgumentException("Audio name cannot be empty.");
+            }
             if (!File.Exists(Path.Combine(Directory.GetCurrentDirectory(), "res", audioName + ".opus")))
             {
                 await ctx.RespondAsync("Öyle bir şey yok. ._.");
@@ -467,9 +515,36 @@ namespace MedicBot
             }
             File.Copy(Path.Combine(Directory.GetCurrentDirectory(), "res", audioName + ".opus"), Path.Combine(Directory.GetCurrentDirectory(), "res", "trash", audioName + ".opus")); //Copy and then Delete instead of Move so the Date Created property updates to reflect the date and time the sound file was deleted.
             File.Delete(Path.Combine(Directory.GetCurrentDirectory(), "res", audioName + ".opus")); //Using Move leads to the Date Created and Date Modified properties not change at all.
-            Log(string.Format("DELETE: FILE {0} deleted BY {1}({2})", audioName, ctx.User.Username, ctx.User.Id));
             await ctx.RespondAsync("🗑️");
         }
+
+        [Command("download")]
+        [Aliases("indir")]
+        [Description("Bir ses kaydını Discord'a mesaj olarak gönderir.")]
+        public async Task Download(
+            CommandContext ctx,
+            [Description("Sesin kayıtlardaki adı.")][RemainingText]string audioName)
+        {
+            if (String.IsNullOrWhiteSpace(audioName))
+            {
+                throw new ArgumentException("Audio name cannot be empty.");
+            }
+            else if (audioName == "!!")
+            {
+                audioName = lastPlayedSong;
+            }
+            string filePath = Path.Combine(Directory.GetCurrentDirectory(), "res", IsSafeServer(ctx.Guild.Id) ? "safe" : "", audioName + ".opus");
+            if (!File.Exists(filePath))
+            {
+                await ctx.RespondAsync("Öyle bir şey yok. ._.");
+                throw new InvalidOperationException("File not found.");
+            }
+            using (FileStream fs = new FileStream(filePath, FileMode.Open))
+            {
+                await ctx.RespondWithFileAsync(fs);
+            }
+        }
+
         #endregion
 
         [Command("youtube")]
@@ -589,7 +664,7 @@ namespace MedicBot
         [Command("test")]
         public async Task Test(CommandContext ctx)
         {
-            await ctx.RespondAsync(Path.Combine(Directory.GetCurrentDirectory(), "res", IsSafeServer(ctx.Guild.Id) ? "safe" : ""));
+            GC.Collect();
         }
 
         //[Command("purge")]
@@ -644,11 +719,6 @@ namespace MedicBot
         public bool IsSafeServer(ulong id)
         {
             return File.ReadLines("safe-guilds.txt").Contains(id.ToString());
-        }
-
-        public void Log(string logString)
-        {
-            File.AppendAllText(Path.Combine(Directory.GetCurrentDirectory(), "res", "log.txt"), Environment.NewLine + DateTime.Now.ToString() + " || " + logString);
         }
         /*
         public async Task OnVoiceReceived(VoiceReceiveEventArgs ea)

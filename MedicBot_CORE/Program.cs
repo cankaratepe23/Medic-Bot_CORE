@@ -43,6 +43,8 @@ namespace MedicBot
                 StringPrefixes = new string[] { "#" }
             });
             commands.RegisterCommands<MedicCommands>();
+            commands.CommandErrored += Commands_CommandErrored;
+            commands.CommandExecuted += Commands_CommandExecuted;
             interactivity = discord.UseInteractivity(new InteractivityConfiguration
             {
                 Timeout = TimeSpan.FromMinutes(1)
@@ -65,12 +67,11 @@ namespace MedicBot
 
             discord.VoiceStateUpdated += async e =>
             {
-                if (voice.GetConnection(e.Guild) != null && e.Channel == voice.GetConnection(e.Guild).Channel) //Remove(d) second check so bot can play audio for itself??   (&& e.User != discord.CurrentUser)
+                if (voice.GetConnection(e.Guild) != null) //Remove(d) second check so bot can play audio for itself??   (&& e.User != discord.CurrentUser)
                 {
-                    if (voice.GetConnection(e.Guild) != null && !alreadyPlayedForUsers.Contains(e.User.Id))
-                    {
+                    if (e.Channel == voice.GetConnection(e.Guild).Channel && !alreadyPlayedForUsers.Contains(e.User.Id))
+                    { // If the user who triggered the event is in the same voice channel as the bot; AND the intro hasn't been played for the user yet
                         Random rnd = new Random();
-                        DiscordUser medicUser = await discord.GetUserAsync(134336937224830977);
                         List<string> userSpecificFiles = new List<string>(Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "res", "0"), "*.opus"));
                         if (Directory.Exists(Path.Combine(Directory.GetCurrentDirectory(), "res", e.User.Id.ToString())))
                         {
@@ -79,13 +80,17 @@ namespace MedicBot
                         string audioFile = Path.GetFileNameWithoutExtension(userSpecificFiles[rnd.Next(0, userSpecificFiles.Count)]);
                         await Task.Delay(1000);
                         //await commands.SudoAsync(medicUser, e.Guild.Channels.FirstOrDefault(), "#play " + audioFile);
-                        await commands.ExecuteCommandAsync(commands.CreateFakeContext(medicUser, e.Guild.Channels.FirstOrDefault().Value, "#play " + audioFile, "#", commands.RegisteredCommands.Where(c => c.Key == "play").FirstOrDefault().Value, audioFile));
+                        await commands.ExecuteCommandAsync(commands.CreateFakeContext(e.User, e.Guild.Channels[505103389537992704], "#play " + audioFile, "#", commands.RegisteredCommands["play"], audioFile));
                         alreadyPlayedForUsers.Add(e.User.Id);
                     }
-                }
-                else if (e.Channel == null)
-                {
-                    alreadyPlayedForUsers.Remove(e.User.Id);
+                    else if (e.Channel == null)
+                    { // Someone left
+                        alreadyPlayedForUsers.Remove(e.User.Id);
+                        if (e.Before.Channel.Users.Count() == 1)
+                        {
+                            await commands.ExecuteCommandAsync(commands.CreateFakeContext(e.User, e.Guild.Channels[505103389537992704], "#leave", "#", commands.RegisteredCommands["leave"]));
+                        }
+                    }
                 }
             };
 
@@ -146,6 +151,36 @@ namespace MedicBot
             };
             await discord.ConnectAsync();
             await Task.Delay(-1);
+        }
+
+        private static Task Commands_CommandExecuted(CommandExecutionEventArgs e)
+        {
+            string[] logEnabledCommands = { "add", "delete", "edit" };
+            if (!logEnabledCommands.Contains(e.Command.Name))
+            {
+                return Task.CompletedTask;
+            }
+            else
+            {
+                string logMessage = String.Format("{0}: Command triggered by {1} ({2}) :: {3}", e.Command.Name.ToUpper(), e.Context.User.Username, e.Context.User.Id, e.Context.Message.Content);
+                return Task.Run(() =>
+                {
+                    File.AppendAllText(Path.Combine(Directory.GetCurrentDirectory(), "res", "log.txt"),
+                        Environment.NewLine + DateTime.Now.ToString() + " || " + logMessage);
+                });
+            }
+        }
+
+        private static Task Commands_CommandErrored(CommandErrorEventArgs e)
+        {
+            if (e.Exception is ArgumentException)
+            {
+                return commands.ExecuteCommandAsync(commands.CreateFakeContext(e.Context.User, e.Context.Channel, "#help " + e.Command.Name, e.Context.Prefix, commands.RegisteredCommands["help"], e.Command.Name)); 
+            }
+            else
+            {
+                return Task.CompletedTask;
+            }
         }
 
         private static DateTime GetImsakTime()
