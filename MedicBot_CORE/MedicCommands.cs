@@ -729,6 +729,7 @@ namespace MedicBot
         public async Task Test(CommandContext ctx)
         {
             GC.Collect();
+            await ctx.RespondAsync("🗑️");
         }
 
         //[Command("purge")]
