@@ -158,6 +158,8 @@ namespace MedicBot
             string filePath;
             bool disconnectAfterPlaying = false;
             bool isUrl = false;
+            bool isChainCommand = false;
+            List<string> commandQueue = null;
             if (fileName != null)
             {
                 if (Uri.TryCreate(fileName, UriKind.Absolute, out Uri uriResult) && (uriResult.Scheme == Uri.UriSchemeHttps || uriResult.Scheme == Uri.UriSchemeHttp))
@@ -186,10 +188,9 @@ namespace MedicBot
                 {
                     if (fileName.Contains(','))
                     {
-                        var queue = fileName.Split(',').Select(s => s.Trim()).ToList();
-                        fileName = queue.First();
-                        queue.RemoveAt(0);
-                        queuedSongs.AddRange(queue);
+                        commandQueue = fileName.Split(',').Select(s => s.Trim()).ToList();
+                        fileName = commandQueue.First();
+                        isChainCommand = true;
                     }
 
                     filePath = Path.Combine(Directory.GetCurrentDirectory(), "res", IsSafeServer(ctx.Guild.Id) ? "safe" : "", fileName + ".opus");
@@ -224,10 +225,27 @@ namespace MedicBot
 
             lastPlayedSong = fileName == null ? Path.GetFileNameWithoutExtension(filePath) : fileName;
 
-            if (nowPlaying)
-            {
-                queuedSongs.Add(Path.GetFileNameWithoutExtension(filePath));
+            if (nowPlaying) // IF playing
+            { // Add the current song to the bottom of the queue
+                // OR Add entire chain queue to the bottom of the queue
+                if (isChainCommand)
+                {
+                    queuedSongs.AddRange(commandQueue);
+                }
+                else
+                {
+                    queuedSongs.Add(Path.GetFileNameWithoutExtension(filePath));
+                }
                 return;
+            }
+            else // If not playing, play
+            { // do nothing
+                // OR Remove the first entry from the chain queue and add the rest to the bottom of the queue
+                if (isChainCommand)
+                {
+                    commandQueue.RemoveAt(0);
+                    queuedSongs.AddRange(commandQueue); 
+                }
             }
             await voiceNextConnection.SendSpeakingAsync(true);
             nowPlaying = true;
@@ -284,10 +302,15 @@ namespace MedicBot
         [Aliases("listplay", "playrange")]
         [Description("Girilen kelimeyle eşleşen tüm sesleri oynatır.")]
         public async Task PlayRange(CommandContext ctx, [Description("Listede aranacak kelime.")][RemainingText] string searchString)
-        {
+       {
             List<string> matchingFileNames = GetAllFiles(ctx.Guild.Id).Where(f => f.Contains(searchString)).Select(f => f = Path.GetFileNameWithoutExtension(f)).ToList();
             matchingFileNames.Sort();
             string playerString = "";
+            if (matchingFileNames.Count == 0)
+            {
+                await ctx.RespondAsync("Ses dosyası bulunamadı.");
+                throw new FileNotFoundException("Audio file not found.");
+            }
             foreach (string fileName in matchingFileNames)
             {
                 playerString += fileName + ", ";
