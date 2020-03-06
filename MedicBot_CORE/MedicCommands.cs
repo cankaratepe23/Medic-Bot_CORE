@@ -173,7 +173,7 @@ namespace MedicBot
                     Process youtubeDl = Process.Start(ydlStartInfo);
                     youtubeDl.WaitForExit();
                     string stderr = youtubeDl.StandardError.ReadToEnd();
-                    if (stderr != null)
+                    if (!String.IsNullOrEmpty(stderr))
                     {
                         await ctx.RespondAsync(stderr);
                         await ctx.RespondAsync("You can try sending the file directly!");
