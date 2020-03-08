@@ -259,7 +259,7 @@ namespace MedicBot
                 if (isChainCommand)
                 {
                     commandQueue.RemoveAt(0);
-                    queuedSongs.AddRange(commandQueue); 
+                    queuedSongs.AddRange(commandQueue);
                 }
             }
             await voiceNextConnection.SendSpeakingAsync(true);
@@ -317,16 +317,16 @@ namespace MedicBot
         [Command("playall")]
         [Aliases("listplay", "playrange")]
         [Description("Girilen kelimeyle eşleşen tüm sesleri oynatır.")]
-        public async Task PlayRange(CommandContext ctx, [Description("Listede aranacak kelime.")][RemainingText] string searchString)
-       {
-            List<string> matchingFileNames = GetAllFiles(ctx.Guild.Id).Where(f => f.Contains(searchString)).Select(f => f = Path.GetFileNameWithoutExtension(f)).ToList();
+        public async Task PlayRange(CommandContext ctx, [Description("Listedeki seslerle eşleştirilecek kelime.")][RemainingText] string searchString)
+        {
+            List<string> matchingFileNames = GetAllFiles(ctx.Guild.Id).Select(f => f = Path.GetFileNameWithoutExtension(f)).Where(f => f.Contains(searchString)).ToList();
             matchingFileNames.Sort();
-            string playerString = "";
             if (matchingFileNames.Count == 0)
             {
                 await ctx.RespondAsync("Ses dosyası bulunamadı.");
                 throw new FileNotFoundException("Audio file not found.");
             }
+            string playerString = "";
             foreach (string fileName in matchingFileNames)
             {
                 playerString += fileName + ", ";
@@ -335,7 +335,32 @@ namespace MedicBot
             var fakeContext = ctx.CommandsNext.CreateFakeContext(ctx.User, ctx.Channel, "#play " + playerString, ctx.Prefix, ctx.CommandsNext.RegisteredCommands["play"], playerString);
             await Play(fakeContext, playerString);
         }
-        
+
+        [Command("playrandom")]
+        [Aliases("playrand", "playrnd")]
+        [Description("Girilen kelimeyle eşleşen seslerden birini rastgele seçerek oynatır.")]
+        public async Task PlayRandom(CommandContext ctx, [Description("Listedeki seslerle eşleştirilecek kelime.")][RemainingText] string searchString)
+        {
+            List<string> matchingFileNames = GetAllFiles(ctx.Guild.Id).Select(f => f = Path.GetFileNameWithoutExtension(f)).Where(f => f.Contains(searchString)).ToList();
+            if (matchingFileNames.Count == 0)
+            {
+                await ctx.RespondAsync("Ses dosyası bulunamadı.");
+                throw new FileNotFoundException("Audio file not found.");
+            }
+            string audioName;
+            if (matchingFileNames.Count == 1)
+            {
+                audioName = matchingFileNames.First();
+            }
+            else
+            {
+                Random random = new Random();
+                audioName = matchingFileNames[random.Next(0, matchingFileNames.Count)];
+            }
+            var fakeContext = ctx.CommandsNext.CreateFakeContext(ctx.User, ctx.Channel, "#play " + audioName, ctx.Prefix, ctx.CommandsNext.RegisteredCommands["play"], audioName);
+            await Play(fakeContext, audioName);
+        }
+
         [Command("queue")]
         [Aliases("q")]
         [Description("Şu anda çalan ve sırada olan sesleri listeler.")]
