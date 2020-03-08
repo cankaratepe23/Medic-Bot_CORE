@@ -20,6 +20,7 @@ namespace MedicBot
         //private ConcurrentDictionary<uint, Process> ffmpegs;
         bool checkAudioExists = true;
         bool nowPlaying;
+        string nowPlayingName;
         //bool recordingDisabled = true;
         private List<string> queuedSongs = new List<string>();
         private string lastPlayedSong = "";
@@ -89,7 +90,7 @@ namespace MedicBot
             }
             else
             {
-                await ctx.RespondAsync("Ses kanalı bulunamadı ya da birden fazla bulundu. Biraz daha kesin konuşur musun");
+                await ctx.RespondAsync("Ses kanalı bulunamadı ya da birden fazla bulundu.");
                 throw new InvalidOperationException("Multiple or no voice channels found.");
             }
             //this.ffmpegs = new ConcurrentDictionary<uint, Process>();
@@ -276,10 +277,12 @@ namespace MedicBot
                 string songName = youtubeDl.StandardOutput.ReadToEnd();
                 youtubeDl.Dispose();
                 await ctx.Client.UpdateStatusAsync(new DiscordActivity(songName, ActivityType.Playing));
+                nowPlayingName = songName;
             }
             else
             {
-                await ctx.Client.UpdateStatusAsync(new DiscordActivity(Path.GetFileNameWithoutExtension(filePath), ActivityType.Playing));
+                await ctx.Client.UpdateStatusAsync(new DiscordActivity(fileName, ActivityType.Playing));
+                nowPlayingName = fileName;
             }
 
             var psi = new ProcessStartInfo
@@ -311,7 +314,6 @@ namespace MedicBot
             }
         }
 
-
         [Command("playall")]
         [Aliases("listplay", "playrange")]
         [Description("Girilen kelimeyle eşleşen tüm sesleri oynatır.")]
@@ -332,6 +334,51 @@ namespace MedicBot
             playerString = playerString.Substring(0, playerString.Length - 2);
             var fakeContext = ctx.CommandsNext.CreateFakeContext(ctx.User, ctx.Channel, "#play " + playerString, ctx.Prefix, ctx.CommandsNext.RegisteredCommands["play"], playerString);
             await Play(fakeContext, playerString);
+        }
+        
+        [Command("queue")]
+        [Aliases("q")]
+        [Description("Şu anda çalan ve sırada olan sesleri listeler.")]
+        public async Task Queue(CommandContext ctx)
+        {
+            string message = "";
+            if (!nowPlaying)
+            {
+                message += "Hiçbir şey çalmıyor.";
+            }
+            else
+            {
+                message += "__Now Playing:__\n";
+                message += await GetQueueEntry(ctx, nowPlayingName) + "\n";
+                message += "\n" + DiscordEmoji.FromName(ctx.Client, ":arrow_down:") + " __Up Next:__ " + DiscordEmoji.FromName(ctx.Client, ":arrow_down:") + "\n";
+                int order = 0;
+                foreach (string audioName in queuedSongs)
+                {
+                    message += "\n`" + ++order + ".` " + await GetQueueEntry(ctx, audioName) + "\n";
+                }
+            }
+            DiscordEmbedBuilder embedBuilder = new DiscordEmbedBuilder()
+            {
+                Title = "MedicBot Queue",
+                Description = message,
+                Color = new DiscordColor("3498DB")
+            };
+            await ctx.RespondAsync("", false, embedBuilder.Build());
+        }
+
+        public async Task<string> GetQueueEntry(CommandContext ctx, string audioName)
+        {
+            audioName = audioName.Trim();
+            if (audioName.Length == 18 && UInt64.TryParse(audioName, out ulong msgId))
+            {
+                DiscordMessage msg = await ctx.Channel.GetMessageAsync(msgId);
+                DiscordAttachment attachment = msg.Attachments.First();
+                return String.Format("[{0}]({1})", attachment.FileName, msg.JumpLink);
+            }
+            else
+            {
+                return audioName;
+            }
         }
         #endregion
 
@@ -388,6 +435,25 @@ namespace MedicBot
             await ctx.Member.SendMessageAsync(response);
         }
 
+        [Command("news")]
+        [Description("En son eklenen sesleri gösterir.")]
+        public async Task News(CommandContext ctx, [Description("Gösterilecek yeni ses sayısı.")]int count = 10)
+        {
+            if (count > 20)
+            {
+                await ctx.RespondAsync("Çok fazla ses istedin.");
+                throw new InvalidOperationException("Count was entered too high in News command.");
+            }
+            string[] allFiles = GetAllFiles(ctx.Guild.Id);
+            allFiles = allFiles.OrderByDescending(f => File.GetLastWriteTimeUtc(f)).ToArray();
+            string msg = "```\n";
+            for (int i = 0; i < count; i++)
+            {
+                msg += Path.GetFileNameWithoutExtension(allFiles[i]) + "\n";
+            }
+            msg += "```";
+            await ctx.RespondAsync(msg);
+        }
 
         [Command("link")]
         [Description("Bir ses kaydının (varsa) indirildiği linki getirir.")]
@@ -507,6 +573,7 @@ namespace MedicBot
             ffmpeg.Dispose();
             File.Delete(Path.Combine(Directory.GetCurrentDirectory(), "res", "işlenecekler", audioName + ".webm"));
             File.Move(Path.Combine(Directory.GetCurrentDirectory(), "res", "işlenecekler", audioName + ".opus"), Path.Combine(Directory.GetCurrentDirectory(), "res", audioName + ".opus"));
+            await ctx.RespondAsync(String.Format("{0} Added {1}", DiscordEmoji.FromName(ctx.Client, ":white_check_mark:"), audioName));
         }
 
         [Command("intro")]
@@ -632,7 +699,7 @@ namespace MedicBot
                 await ctx.RespondAsync("Öyle bir şey yok. ._.");
                 throw new InvalidOperationException("File not found.");
             }
-            string mp3Path = Path.Combine(Directory.GetCurrentDirectory(), "res", "işlenecekler", Path.GetFileNameWithoutExtension(filePath)) + ".mp3";
+            string mp3Path = Path.Combine(Directory.GetCurrentDirectory(), "res", "işlenecekler", audioName + ".mp3");
             ProcessStartInfo ffmpegInfo = new ProcessStartInfo()
             {
                 FileName = "ffmpeg.exe",
@@ -741,26 +808,6 @@ namespace MedicBot
                 System.Threading.Thread.Sleep(500);
             }
             await Play(ctx, audioName);
-        }
-
-        [Command("news")]
-        [Description("En son eklenen sesleri gösterir.")]
-        public async Task News(CommandContext ctx, [Description("Gösterilecek yeni ses sayısı.")]int count = 10)
-        {
-            if (count > 20)
-            {
-                await ctx.RespondAsync("Çok fazla ses istedin.");
-                throw new InvalidOperationException("Count was entered too high in News command.");
-            }
-            string[] allFiles = GetAllFiles(ctx.Guild.Id);
-            allFiles = allFiles.OrderByDescending(f => File.GetLastWriteTimeUtc(f)).ToArray();
-            string msg = "```\n";
-            for (int i = 0; i < count; i++)
-            {
-                msg += Path.GetFileNameWithoutExtension(allFiles[i]) + "\n";
-            }
-            msg += "```";
-            await ctx.RespondAsync(msg);
         }
 
         [Command("test")]
