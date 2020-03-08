@@ -184,6 +184,18 @@ namespace MedicBot
                     filePath = youtubeDl.StandardOutput.ReadToEnd();
                     youtubeDl.Dispose();
                 }
+                else if (ctx.Message.Content.Length == 18 + 6 && UInt64.TryParse(ctx.Message.Content.Substring(6, 18), out ulong msgId))
+                {
+                    // we're going to play a file attached to a message
+                    DiscordMessage msg = await ctx.Channel.GetMessageAsync(msgId);
+                    if (msg.Attachments.Count != 1)
+                    {
+                        await ctx.RespondAsync("Mesaj bir dosya içermiyor.");
+                        throw new InvalidOperationException("Message does not contain an attachment.");
+                    }
+                    DiscordAttachment attachedFile = msg.Attachments.First();
+                    filePath = attachedFile.Url;
+                }
                 else
                 {
                     if (fileName.Contains(','))
@@ -205,6 +217,7 @@ namespace MedicBot
             else if (ctx.Message.Attachments.Count == 1)
             {
                 DiscordAttachment attachedFile = ctx.Message.Attachments.First();
+                fileName = ctx.Message.Id.ToString();
                 filePath = attachedFile.Url;
             }
             else
@@ -212,6 +225,7 @@ namespace MedicBot
                 Random rnd = new Random();
                 string[] allFiles = GetAllFiles(ctx.Guild.Id);
                 filePath = allFiles[rnd.Next(allFiles.Length)];
+                fileName = Path.GetFileNameWithoutExtension(filePath);
             }
 
             var voiceNext = ctx.Client.GetVoiceNext();
@@ -234,7 +248,7 @@ namespace MedicBot
                 }
                 else
                 {
-                    queuedSongs.Add(Path.GetFileNameWithoutExtension(filePath));
+                    queuedSongs.Add(fileName);
                 }
                 return;
             }
