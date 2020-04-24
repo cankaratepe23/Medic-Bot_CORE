@@ -551,7 +551,7 @@ namespace MedicBot
         [Description("Verilen linkteki sesi, verilen süre parametrelerine göre ayarlayıp botun ses listesinde çalınmak üzere ekler.")]
         public async Task Add(
             CommandContext ctx,
-            [Description("Ses kaynağının linki. YouTube, Dailymotion ve başka video paylaşım sitelerini, video gömülü sayfaları deneyebilirsiniz. Çalışma garanitisi vermiyorum.")]string URL,
+            [Description("Ses kaynağının linki.")]string URL,
             [Description("İlgili bölümün, linkteki videoda başladığı saniye. Örn. 2:07 => 127 ya da 134.5")]string startSec,
             [Description("İlgili bölümün, linkteki videoda saniye cinsinden uzunluğu. Örn. 5.8")]string durationSec,
             [Description("Sesin kayıtlardaki adı. Örn. #play [gireceğiniz ad] komutuyla çalmak için.")][RemainingText]string audioName)
