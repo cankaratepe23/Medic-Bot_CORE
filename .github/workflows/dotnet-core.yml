@@ -28,8 +28,8 @@ jobs:
     - name: Deploy to server
       uses: appleboy/scp-action@master
       with:
-        host: ${{ secrets.HOST }}
-        username: ${{ secrets.USERNAME }}
-        password: ${{ secrets.PASSWORD }}
+        host: ${{ secrets.FTP_HOST }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
         source: "/home/runner/work/Medic-Bot_CORE/Medic-Bot_CORE/MedicBot_CORE/bin/Release/netcoreapp3.1/"
         target: "./"
