@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28307.168
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30002.166
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MedicBot_CORE", "MedicBot_CORE\MedicBot_CORE.csproj", "{FCD6DB2B-402B-4570-BB8A-A9ADCC93A04C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MedicBot", "MedicBot_CORE\MedicBot.csproj", "{FCD6DB2B-402B-4570-BB8A-A9ADCC93A04C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

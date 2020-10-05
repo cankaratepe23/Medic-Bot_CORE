@@ -18,29 +18,28 @@ namespace MedicBot
         // This list was written to handle RythmBot commands but turns out, RyhtmBot ignores bot messages.
         // Maybe test this in the future with Music Bot? Although RyhtmBot is better than MusicBot..
         // static readonly List<string> bannedWords = new List<string>(File.ReadLines(@"banned_words.txt", System.Text.Encoding.UTF8));
-        static List<ulong> alreadyPlayedForUsers = new List<ulong>();
+        static readonly List<ulong> alreadyPlayedForUsers = new List<ulong>();
         static DiscordClient discord;
         static CommandsNextExtension commands;
         static InteractivityExtension interactivity;
         static VoiceNextExtension voice;
-        static void Main(string[] args)
+        static void Main()
         {
-            MainAsync(args).ConfigureAwait(false).GetAwaiter().GetResult();
+            MainAsync().ConfigureAwait(false).GetAwaiter().GetResult();
         }
-        static async Task MainAsync(string[] args)
+        static async Task MainAsync()
         {
             discord = new DiscordClient(new DiscordConfiguration
             {
                 Token = Environment.GetEnvironmentVariable("Bot_Token"),
                 TokenType = TokenType.Bot,
-                UseInternalLogHandler = true,
-                LogLevel = LogLevel.Debug
+                MinimumLogLevel = Microsoft.Extensions.Logging.LogLevel.Debug
             });
             commands = discord.UseCommandsNext(new CommandsNextConfiguration
             {
                 CaseSensitive = false,
                 EnableDms = false,
-                StringPrefixes = new string[] { "#" }
+                StringPrefixes = new string[] { "#", "$" }
             });
             commands.RegisterCommands<MedicCommands>();
             commands.CommandErrored += Commands_CommandErrored;
@@ -55,6 +54,10 @@ namespace MedicBot
                 AudioFormat = new AudioFormat(48000, 2, VoiceApplication.LowLatency),
                 EnableIncoming = false
             });
+            AudioHelper.Load();
+
+            AudioHelper.CheckForErrors();
+
 
             System.Timers.Timer timer = new System.Timers.Timer(900000); // change this to a larger value later: 900000
             timer.Elapsed += Timer_ElapsedAsync;
@@ -65,22 +68,24 @@ namespace MedicBot
                 File.WriteAllText("safe-guilds.txt", "386570547267502080");
             }
 
-            discord.VoiceStateUpdated += async e =>
+            discord.VoiceStateUpdated += async (client, e) =>
             {
                 if (voice.GetConnection(e.Guild) != null) //Remove(d) second check so bot can play audio for itself??   (&& e.User != discord.CurrentUser)
                 {
                     if (e.Channel == voice.GetConnection(e.Guild).Channel && !alreadyPlayedForUsers.Contains(e.User.Id))
                     { // If the user who triggered the event is in the same voice channel as the bot; AND the intro hasn't been played for the user yet
-                        Random rnd = new Random();
-                        List<string> userSpecificFiles = new List<string>(Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "res", "0"), "*.opus"));
-                        if (Directory.Exists(Path.Combine(Directory.GetCurrentDirectory(), "res", e.User.Id.ToString())))
+                        List<AudioEntry> intros = AudioHelper.GetUniversalIntros();
+                        List<AudioEntry> userIntros = AudioHelper.GetUserIntros(e.After.User.Id);
+                        if (userIntros != null || userIntros.Count != 0) // Exception here
                         {
-                            userSpecificFiles.AddRange(Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "res", e.User.Id.ToString()), "*.opus"));
+                            intros.AddRange(userIntros);
                         }
-                        string audioFile = Path.GetFileNameWithoutExtension(userSpecificFiles[rnd.Next(0, userSpecificFiles.Count)]);
+
+                        AudioEntry introEntry = intros.OrderBy(e => new Random().Next()).First();
+
                         await Task.Delay(1000);
-                        //await commands.SudoAsync(medicUser, e.Guild.Channels.FirstOrDefault(), "#play " + audioFile);
-                        await commands.ExecuteCommandAsync(commands.CreateFakeContext(e.User, e.Guild.Channels[505103389537992704], "#play " + audioFile, "#", commands.RegisteredCommands["play"], audioFile));
+
+                        await commands.ExecuteCommandAsync(commands.CreateFakeContext(e.User, e.Guild.Channels[505103389537992704], "#play " + introEntry.Name, "#", commands.RegisteredCommands["play"], introEntry.Name));
                         alreadyPlayedForUsers.Add(e.User.Id);
                     }
                     else if (e.Channel == null)
@@ -92,9 +97,20 @@ namespace MedicBot
                         }
                     }
                 }
+                else if (e.User.Id == client.CurrentUser.Id)
+                { // Bot did something
+                    if ((e.Before == null || e.Before.Channel == null) && (e.After != null && e.After.Channel != null))
+                    { // Bot joined
+                        alreadyPlayedForUsers.AddRange(e.After.Channel.Users.Where(u => u.Id != client.CurrentUser.Id).Select(u => u.Id));
+                    }
+                    else
+                    {
+                        // Bot left
+                    }
+                }
             };
 
-            discord.MessageCreated += async e =>
+            discord.MessageCreated += async (client, e) =>
             {
                 if (e.Author.Equals(discord.CurrentUser))
                     return;
@@ -153,7 +169,7 @@ namespace MedicBot
             await Task.Delay(-1);
         }
 
-        private static Task Commands_CommandExecuted(CommandExecutionEventArgs e)
+        private static Task Commands_CommandExecuted(CommandsNextExtension commandsNextExtension, CommandExecutionEventArgs e)
         {
             string[] logEnabledCommands = { "add", "delete", "edit" };
             if (!logEnabledCommands.Contains(e.Command.Name))
@@ -171,15 +187,26 @@ namespace MedicBot
             }
         }
 
-        private static Task Commands_CommandErrored(CommandErrorEventArgs e)
+        private static Task Commands_CommandErrored(CommandsNextExtension commandsNextExtension, CommandErrorEventArgs e)
         {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine(e.Exception.Message);
+            Console.ResetColor();
             if (e.Exception is ArgumentException)
             {
                 return commands.ExecuteCommandAsync(commands.CreateFakeContext(e.Context.User, e.Context.Channel, "#help " + e.Command.Name, e.Context.Prefix, commands.RegisteredCommands["help"], e.Command.Name)); 
             }
+            else if (e.Exception is AudioEntryNotFoundException)
+            {
+                return e.Context.RespondAsync("Ses dosyası bulunamadı.");
+            }
+            else if (e.Exception is NoResultsFoundException)
+            {
+                return e.Context.RespondAsync("Aranan terime uygun ses dosyası bulunamadı.");
+            }
             else
             {
-                return Task.CompletedTask;
+                throw e.Exception;
             }
         }
 

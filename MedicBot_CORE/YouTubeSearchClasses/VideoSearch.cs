@@ -44,8 +44,10 @@ namespace YoutubeSearch
         {
             items = new List<VideoInformation>();
 
-            webclient = new WebClient();
-            webclient.Encoding = System.Text.Encoding.UTF8;
+            webclient = new WebClient
+            {
+                Encoding = System.Text.Encoding.UTF8
+            };
 
             // Do search
             for (int i = 1; i <= queryPages; i++)
