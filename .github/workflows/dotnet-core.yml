@@ -24,4 +24,4 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: MedicBot Build
-        path: /home/runner/work/Medic-Bot_CORE/Medic-Bot_CORE/Medic-Bot_CORE/bin/Release/netcoreapp3.1/
+        path: /home/runner/work/Medic-Bot_CORE/Medic-Bot_CORE/MedicBot_CORE/bin/Release/netcoreapp3.1/
