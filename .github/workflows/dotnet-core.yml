@@ -20,8 +20,8 @@ jobs:
       run: dotnet restore
     - name: Build
       run: dotnet build --configuration Release --no-restore
-    - uses: actions/upload-artifact@v2
     - name: Upload Artifact
+      uses: actions/upload-artifact@v2
       with:
         name: MedicBot Build
         path: /home/runner/work/Medic-Bot_CORE/Medic-Bot_CORE/Medic-Bot_CORE/bin/Release/netcoreapp3.1
