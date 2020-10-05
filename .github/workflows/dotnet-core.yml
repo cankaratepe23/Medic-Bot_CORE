@@ -25,10 +25,11 @@ jobs:
       with:
         name: MedicBot Build
         path: /home/runner/work/Medic-Bot_CORE/Medic-Bot_CORE/MedicBot_CORE/bin/Release/netcoreapp3.1/
-    - name: Deploy
-      uses: SamKirkland/FTP-Deploy-Action@3.1.1
+    - name: Deploy to server
+      uses: appleboy/scp-action@master
       with:
-        ftp-server: ${{ secrets.FTP_HOST }}
-        ftp-username: ${{ secrets.FTP_USERNAME }}
-        ftp-password: ${{ secrets.FTP_PASSWORD }}
-        local-dir: /home/runner/work/Medic-Bot_CORE/Medic-Bot_CORE/MedicBot_CORE/bin/Release/netcoreapp3.1/
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        password: ${{ secrets.PASSWORD }}
+        source: "/home/runner/work/Medic-Bot_CORE/Medic-Bot_CORE/MedicBot_CORE/bin/Release/netcoreapp3.1/"
+        target: "./"
