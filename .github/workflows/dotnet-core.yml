@@ -29,9 +29,9 @@ jobs:
       uses: appleboy/scp-action@master
       with:
         rm: true
-        strip_components: 5
+        strip_components: 4
         host: ${{ secrets.FTP_HOST }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         source: "/home/runner/work/Medic-Bot_CORE/Medic-Bot_CORE/MedicBot_CORE/bin/Release/netcoreapp3.1/"
-        target: "./"
+        target: "deploy"
