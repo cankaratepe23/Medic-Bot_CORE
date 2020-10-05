@@ -28,6 +28,8 @@ jobs:
     - name: Deploy to server
       uses: appleboy/scp-action@master
       with:
+        rm: true
+        strip_components: 5
         host: ${{ secrets.FTP_HOST }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
