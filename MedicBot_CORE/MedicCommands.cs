@@ -464,7 +464,7 @@ namespace MedicBot
             File.WriteAllText("array.js", sb.ToString());
             if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux))
             {
-                File.Move("array.js", "/var/www/comaristan/medicbot/array.js");
+                File.Move("array.js", "/var/www/comaristan/medicbot/array.js", true);
             }
             await ctx.RespondAsync("Entry list can be found at: https://comaristan.cf/medicbot");
         }
