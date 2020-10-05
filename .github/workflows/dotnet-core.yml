@@ -1,4 +1,4 @@
-name: .NET Core
+name: Build and Deploy
 
 on:
   push:
@@ -20,5 +20,17 @@ jobs:
       run: dotnet restore
     - name: Build
       run: dotnet build --configuration Release --no-restore
-    - name: Test
-      run: dotnet test --no-restore --verbosity normal
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: MedicBot Build
+        path: /home/runner/work/Medic-Bot_CORE/Medic-Bot_CORE/MedicBot_CORE/bin/Release/netcoreapp3.1/
+    - name: Deploy to server
+      uses: appleboy/scp-action@master
+      with:
+        host: ${{ secrets.HOSTNAME }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.KEY }}
+        source: "/home/runner/work/Medic-Bot_CORE/Medic-Bot_CORE/MedicBot_CORE/bin/Release/netcoreapp3.1/"
+        target: "MedicBot"
+        strip_components: 6
