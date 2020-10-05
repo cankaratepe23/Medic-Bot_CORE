@@ -25,3 +25,14 @@ jobs:
       with:
         name: MedicBot Build
         path: /home/runner/work/Medic-Bot_CORE/Medic-Bot_CORE/MedicBot_CORE/bin/Release/netcoreapp3.1/
+    - name: Deploy to server
+    - uses: actions/checkout@v2.1.0
+      with:
+        fetch-depth: 2
+    - name: Deploy
+      uses: SamKirkland/FTP-Deploy-Action@3.1.1
+      with:
+        ftp-server: ${{ secrets.FTP_HOST }}
+        ftp-username: ${{ secrets.FTP_USERNAME }}
+        ftp-password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: /home/runner/work/Medic-Bot_CORE/Medic-Bot_CORE/MedicBot_CORE/bin/Release/netcoreapp3.1/
