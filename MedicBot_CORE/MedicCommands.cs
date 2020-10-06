@@ -187,7 +187,7 @@ namespace MedicBot
         }
 
         [Command("play")]
-        [Aliases("oynatbakalım")]
+        [Aliases("oynatbakalım", "p")]
         [Description("Bir ses oynatır. Bir dosya ile birlikte gönderildiğinde, birlikte gönderildiği ses dosyasını çalar.")]
         public async Task Play(CommandContext ctx, [Description("Çalınacak sesin adı. `#liste` komutuyla tüm seslerin listesini DM ile alabilirsiniz. En son çalan sesi tekrar çalmak için \"!!\" yazabilirsiniz. Ses adı YouTube linki de olabilir.")][RemainingText] string fileNameArg)
         {
