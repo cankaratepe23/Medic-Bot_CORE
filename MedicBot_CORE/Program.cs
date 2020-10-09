@@ -54,8 +54,8 @@ namespace MedicBot
                 AudioFormat = new AudioFormat(48000, 2, VoiceApplication.LowLatency),
                 EnableIncoming = false
             });
-            AudioHelper.Load();
 
+            AudioHelper.Load();
             AudioHelper.CheckForErrors();
 
 
@@ -165,6 +165,8 @@ namespace MedicBot
                     // TODO: Think of functionality for this HOFFMAN
                 }
             };
+            
+            
             await discord.ConnectAsync();
             await Task.Delay(-1);
         }
