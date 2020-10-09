@@ -165,10 +165,60 @@ namespace MedicBot
                     // TODO: Think of functionality for this HOFFMAN
                 }
             };
-            
-            
+
+            HttpListener listener = new HttpListener();
+            listener.Prefixes.Add("http://comaristan.cf:3131/medicbotapi/");
+            //listener.Prefixes.Add("http://127.0.0.1:3131/medicbotapi/");
+            listener.Start();
+            _ = listener.BeginGetContext(new AsyncCallback(ListenerCallback), listener);
+
             await discord.ConnectAsync();
             await Task.Delay(-1);
+        }
+
+        public static void ListenerCallback(IAsyncResult result)
+        {
+            HttpListener listener = (HttpListener) result.AsyncState;
+            // Call EndGetContext to complete the asynchronous operation.
+            HttpListenerContext context = listener.EndGetContext(result);
+            HttpListenerRequest request = context.Request;
+            // Read request body
+            StreamReader bodyStream = new StreamReader(request.InputStream);
+            string bodyString = bodyStream.ReadToEnd();
+            // Log the request
+            Console.WriteLine("INCOMING API REQUEST: " + request.RemoteEndPoint.ToString());
+            Console.WriteLine("||" + bodyString + "||");
+
+            // Obtain a response object.
+            HttpListenerResponse response = context.Response;
+            // """security"""
+            bodyString.Trim();
+            if (!bodyString.StartsWith("#play"))
+            {
+                response.StatusCode = 400; // Bad request, no commands except play are to be accepted through the API yet.
+            }
+            else
+            {
+                DiscordUser medicUser = discord.GetUserAsync(134336937224830977).Result;
+                if (bodyString.Length >= 6)
+                {
+                    commands.ExecuteCommandAsync(commands.CreateFakeContext(medicUser, discord.GetGuildAsync(463052720509812736).Result.Channels.FirstOrDefault().Value, bodyString, "#", commands.RegisteredCommands.Where(c => c.Key == "play").FirstOrDefault().Value, bodyString.Substring(6)));
+                }
+                else
+                {
+                    commands.ExecuteCommandAsync(commands.CreateFakeContext(medicUser, discord.GetGuildAsync(463052720509812736).Result.Channels.FirstOrDefault().Value, bodyString, "#", commands.RegisteredCommands.Where(c => c.Key == "play").FirstOrDefault().Value));
+                }
+            }
+            // Construct a response.
+            response.ContentType = "application/json";
+            string responseString = $"{{\"time\": \"{DateTime.Now}\"}}";
+            byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
+            // Get a response stream and write the response to it.
+            response.ContentLength64 = buffer.Length;
+            Stream output = response.OutputStream;
+            output.Write(buffer, 0, buffer.Length);
+            output.Close();
+            _ = listener.BeginGetContext(new AsyncCallback(ListenerCallback), listener);
         }
 
         private static Task Commands_CommandExecuted(CommandsNextExtension commandsNextExtension, CommandExecutionEventArgs e)
