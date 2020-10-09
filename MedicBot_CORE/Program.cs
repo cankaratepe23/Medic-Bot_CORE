@@ -167,7 +167,7 @@ namespace MedicBot
             };
 
             HttpListener listener = new HttpListener();
-            listener.Prefixes.Add("http://comaristan.cf:3131/medicbotapi/");
+            listener.Prefixes.Add("http://*:3131/medicbotapi/");
             //listener.Prefixes.Add("http://127.0.0.1:3131/medicbotapi/");
             listener.Start();
             _ = listener.BeginGetContext(new AsyncCallback(ListenerCallback), listener);
@@ -182,6 +182,8 @@ namespace MedicBot
             // Call EndGetContext to complete the asynchronous operation.
             HttpListenerContext context = listener.EndGetContext(result);
             HttpListenerRequest request = context.Request;
+            //debug
+            Console.WriteLine(request.Url);
             // Read request body
             StreamReader bodyStream = new StreamReader(request.InputStream);
             string bodyString = bodyStream.ReadToEnd();
