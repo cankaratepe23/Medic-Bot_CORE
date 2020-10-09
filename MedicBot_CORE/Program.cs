@@ -167,7 +167,7 @@ namespace MedicBot
             };
 
             HttpListener listener = new HttpListener();
-            listener.Prefixes.Add("http://comaristan.cf:3131/medicbotapi/");
+            listener.Prefixes.Add("http://*:3131/medicbotapi/");
             //listener.Prefixes.Add("http://127.0.0.1:3131/medicbotapi/");
             listener.Start();
             _ = listener.BeginGetContext(new AsyncCallback(ListenerCallback), listener);
