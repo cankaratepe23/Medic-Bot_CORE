@@ -460,6 +460,8 @@ namespace MedicBot
             sb.Length -= 2;
             sb.Append("];");
             sb.AppendLine();
+            sb.Append("const servers = {\"Freedom\":\"463052720509812736\", \"野郎\": \"718160932299079681\"}");
+            sb.AppendLine();
             sb.Append($"const updatetime = \"{DateTime.UtcNow.AddHours(3).ToString("dd.MM.yyyy HH:mm G\\MT+3")}\"");
             File.WriteAllText("array.js", sb.ToString());
             if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux))
