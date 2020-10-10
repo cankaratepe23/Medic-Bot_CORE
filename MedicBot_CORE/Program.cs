@@ -192,21 +192,37 @@ namespace MedicBot
             // Obtain a response object.
             HttpListenerResponse response = context.Response;
             // """security"""
-            bodyString.Trim();
-            if (!bodyString.StartsWith("#play"))
+            bodyString = bodyString.Trim();
+            var splitString = bodyString.Split('\n');
+            string playString = splitString[0];
+            playString = playString.Trim();
+            ulong guildId = 0;
+            try
             {
-                response.StatusCode = 400; // Bad request, no commands except play are to be accepted through the API yet.
+                guildId = Convert.ToUInt64(splitString[1]);
             }
-            else
+            catch (Exception)
             {
-                DiscordUser medicUser = discord.GetUserAsync(134336937224830977).Result;
-                if (bodyString.Length >= 6)
+                response.StatusCode = 400;
+            }
+            if (response.StatusCode != 400) // If we haven't already set the response code, indicating an error..
+            {
+                if (!playString.StartsWith("#play"))
                 {
-                    commands.ExecuteCommandAsync(commands.CreateFakeContext(medicUser, discord.GetGuildAsync(463052720509812736).Result.Channels.FirstOrDefault().Value, bodyString, "#", commands.RegisteredCommands.Where(c => c.Key == "play").FirstOrDefault().Value, bodyString.Substring(6)));
+                    response.StatusCode = 400; // Bad request, no commands except play are to be accepted through the API yet.
                 }
                 else
                 {
-                    commands.ExecuteCommandAsync(commands.CreateFakeContext(medicUser, discord.GetGuildAsync(463052720509812736).Result.Channels.FirstOrDefault().Value, bodyString, "#", commands.RegisteredCommands.Where(c => c.Key == "play").FirstOrDefault().Value));
+                    
+                    DiscordUser medicUser = discord.GetUserAsync(134336937224830977).Result;
+                    if (playString.Length >= 6)
+                    {
+                        commands.ExecuteCommandAsync(commands.CreateFakeContext(medicUser, discord.GetGuildAsync(guildId).Result.Channels.FirstOrDefault().Value, playString, "#", commands.RegisteredCommands.Where(c => c.Key == "play").FirstOrDefault().Value, playString.Substring(6)));
+                    }
+                    else
+                    {
+                        commands.ExecuteCommandAsync(commands.CreateFakeContext(medicUser, discord.GetGuildAsync(guildId).Result.Channels.FirstOrDefault().Value, playString, "#", commands.RegisteredCommands.Where(c => c.Key == "play").FirstOrDefault().Value));
+                    }
                 }
             }
             // Construct a response.
