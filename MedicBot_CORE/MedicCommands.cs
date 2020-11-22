@@ -474,7 +474,7 @@ namespace MedicBot
             if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux))
             {
                 File.Copy("array.js", "/var/www/comaristan/medicbot/array.js", true);
-                File.Copy("index.hmtl", "/var/www/comaristan/medicbot/index.html");
+                File.Copy("index.html", "/var/www/comaristan/medicbot/index.html");
             }
             await ctx.RespondAsync("Entry list can be found at: https://comaristan.cf/medicbot");
         }
