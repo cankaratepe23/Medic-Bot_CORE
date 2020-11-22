@@ -468,7 +468,7 @@ namespace MedicBot
             File.WriteAllText("array.js", sb.ToString());
 
             string fileContent = File.ReadAllText("index.html");
-            fileContent = Regex.Replace(fileContent, "(array.)([0-9]*)(.js)", match => match.Value);
+            fileContent = Regex.Replace(fileContent, "(array.)([0-9]*)(.js)", match => match.Groups[1] + DateTime.UtcNow.ToString("HHmmss") + match.Groups[3]);
             File.WriteAllText("index.html", fileContent);
 
             if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux))
