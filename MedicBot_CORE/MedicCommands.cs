@@ -466,13 +466,16 @@ namespace MedicBot
             sb.AppendLine();
             sb.Append($"const updatetime = \"{DateTime.UtcNow.AddHours(3).ToString("dd.MM.yyyy HH:mm G\\MT+3")}\"");
             File.WriteAllText("array.js", sb.ToString());
+
+            string fileContent = File.ReadAllText("index.html");
+            fileContent = Regex.Replace(fileContent, "(array.)([0-9]*)(.js)", match => match.Value);
+            File.WriteAllText("index.html", fileContent);
+
             if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux))
             {
-                File.Move("array.js", "/var/www/comaristan/medicbot/array.js", true);
+                File.Copy("array.js", "/var/www/comaristan/medicbot/array.js", true);
+                File.Copy("index.hmtl", "/var/www/comaristan/medicbot/index.html");
             }
-            string fileContent = File.ReadAllText("/var/www/comaristan/medicbot/index.html");
-            fileContent = Regex.Replace(fileContent, "(array.)([0-9]*)(.js)", match => match.Value);
-            File.WriteAllText("test.txt", fileContent);
             await ctx.RespondAsync("Entry list can be found at: https://comaristan.cf/medicbot");
         }
 
