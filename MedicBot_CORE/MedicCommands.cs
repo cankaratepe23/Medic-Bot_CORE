@@ -13,6 +13,7 @@ using YoutubeSearch;
 using DSharpPlus;
 using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace MedicBot
 {
@@ -468,6 +469,9 @@ namespace MedicBot
             {
                 File.Move("array.js", "/var/www/comaristan/medicbot/array.js", true);
             }
+            string fileContent = File.ReadAllText("/var/www/comaristan/medicbot/index.html");
+            fileContent = Regex.Replace(fileContent, "(array.)([0-9]*)(.js)", match => match.Value);
+            File.WriteAllText("test.txt", fileContent);
             await ctx.RespondAsync("Entry list can be found at: https://comaristan.cf/medicbot");
         }
 
