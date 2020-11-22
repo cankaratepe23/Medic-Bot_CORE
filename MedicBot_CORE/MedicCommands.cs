@@ -14,6 +14,7 @@ using DSharpPlus;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
+using DSharpPlus.Interactivity.Extensions;
 
 namespace MedicBot
 {
@@ -167,14 +168,14 @@ namespace MedicBot
                 };
                 Process ffmpeg = Process.Start(psi);
                 Stream ffout = ffmpeg.StandardOutput.BaseStream;
-                VoiceTransmitStream transmitStream = voiceNextConnection.GetTransmitStream();
+                VoiceTransmitSink transmitSink = voiceNextConnection.GetTransmitSink();
                 if (ffmpeg.StandardOutput.Peek() == -1)
                 {
                     Console.WriteLine(ffmpeg.StandardError.ReadToEnd());
                     throw new Exception("FFmpeg error.");
                 }
-                await ffout.CopyToAsync(transmitStream);
-                await transmitStream.FlushAsync();
+                await ffout.CopyToAsync(transmitSink);
+                await transmitSink.FlushAsync();
                 await voiceNextConnection.WaitForPlaybackFinishAsync();
                 await voiceNextConnection.SendSpeakingAsync(false);
             } while (queuedEntries.Count != 0);

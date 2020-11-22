@@ -2,6 +2,7 @@
 using DSharpPlus.CommandsNext;
 using DSharpPlus.Entities;
 using DSharpPlus.Interactivity;
+using DSharpPlus.Interactivity.Extensions;
 using DSharpPlus.VoiceNext;
 using HtmlAgilityPack;
 using System;
@@ -72,7 +73,7 @@ namespace MedicBot
             {
                 if (voice.GetConnection(e.Guild) != null) //Remove(d) second check so bot can play audio for itself??   (&& e.User != discord.CurrentUser)
                 {
-                    if (e.Channel == voice.GetConnection(e.Guild).Channel && !alreadyPlayedForUsers.Contains(e.User.Id))
+                    if (e.Channel == voice.GetConnection(e.Guild).TargetChannel && !alreadyPlayedForUsers.Contains(e.User.Id))
                     { // If the user who triggered the event is in the same voice channel as the bot; AND the intro hasn't been played for the user yet
                         List<AudioEntry> intros = AudioHelper.GetUniversalIntros();
                         List<AudioEntry> userIntros = AudioHelper.GetUserIntros(e.After.User.Id);
