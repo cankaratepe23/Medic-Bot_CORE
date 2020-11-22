@@ -7,6 +7,7 @@ using DSharpPlus.VoiceNext;
 using HtmlAgilityPack;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -168,8 +169,14 @@ namespace MedicBot
             };
 
             HttpListener listener = new HttpListener();
-            listener.Prefixes.Add("http://*:3131/medicbotapi/");
-            //listener.Prefixes.Add("http://127.0.0.1:3131/medicbotapi/");
+            if (!Debugger.IsAttached)
+            {   // In production
+                listener.Prefixes.Add("http://*:3131/medicbotapi/"); 
+            }
+            else
+            {   // Debugging
+                listener.Prefixes.Add("http://127.0.0.1:3131/medicbotapi/");
+            }
             listener.Start();
             _ = listener.BeginGetContext(new AsyncCallback(ListenerCallback), listener);
 
