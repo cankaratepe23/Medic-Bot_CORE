@@ -705,7 +705,7 @@ namespace MedicBot
             }
             ProcessStartInfo psi = new ProcessStartInfo(sevenZExecutableName)
             {
-                Arguments = "x \"" + zipFilePath + "\"",
+                Arguments = "x -y \"" + zipFilePath + "\"",
                 WorkingDirectory = collectionFolder
             };
             Process.Start(psi).WaitForExit();
