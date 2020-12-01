@@ -108,7 +108,7 @@ namespace MedicBot
             AudioEntries = new Dictionary<string, AudioEntry>();
             foreach (string file in Directory.GetFiles(ResDirectory, "*.opus"))
             {
-                AudioEntries.Add(Path.GetFileNameWithoutExtension(file), new AudioEntry(Path.GetFileNameWithoutExtension(file), AudioEntry.AudioType.File, 0, ""));
+                AudioEntries.Add(Path.GetFileNameWithoutExtension(file), new AudioEntry(Path.GetFileNameWithoutExtension(file), Path.GetExtension(file), AudioEntry.AudioType.File, 0, ""));
             }
             SaveStore();
         }

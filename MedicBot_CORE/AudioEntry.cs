@@ -17,15 +17,28 @@ namespace MedicBot
             Attachment
         }
         public string Name { get; set; }
+        private string _extension;
+        public string Extension
+        {
+            get
+            {
+                if (_extension == null)
+                {
+                    _extension = ".opus";
+                }
+                return _extension;
+            }
+            set => _extension = value;
+        }
         public string FileName
         {
             get
             {
-                return Name + ".opus";
+                return Name + Extension;
             }
         }
         public AudioType Type { get; set; }
-        public string path;
+        private string _path;
         public string Path
         {
             get
@@ -36,7 +49,7 @@ namespace MedicBot
                 }
                 else
                 {
-                    return path;
+                    return _path;
                 }
             }
             set
@@ -47,7 +60,7 @@ namespace MedicBot
                 }
                 else
                 {
-                    path = value;
+                    _path = value;
                 }
             }
         }
@@ -58,9 +71,10 @@ namespace MedicBot
         public List<string> Aliases { get; set; }
         public List<string> Collections { get; set; }
 
-        public AudioEntry(string name, AudioType type, ulong ownerId, string downloadedFrom)
+        public AudioEntry(string name, string extension, AudioType type, ulong ownerId, string downloadedFrom)
         {
             Name = name;
+            Extension = extension;
             Type = type;
             OwnerId = ownerId;
             DownloadedFrom = downloadedFrom;

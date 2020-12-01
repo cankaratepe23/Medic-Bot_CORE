@@ -584,7 +584,7 @@ namespace MedicBot
                     throw new Exception("ffmpeg/youtube-dl error");
                 }
             }
-            AudioEntry newEntry = new AudioEntry(audioName, AudioEntry.AudioType.File, ctx.Member.Id, URL);
+            AudioEntry newEntry = new AudioEntry(audioName, ".opus", AudioEntry.AudioType.File, ctx.Member.Id, URL);
             AudioHelper.AddAudio(newEntry);
             AudioHelper.Save();
             await ctx.RespondAsync(String.Format("{0} `{1}` eklendi.", DiscordEmoji.FromName(ctx.Client, ":white_check_mark:"), audioName));
@@ -622,7 +622,7 @@ namespace MedicBot
                 await ctx.RespondAsync("Ses kaydı eklenemedi.");
                 throw new Exception("ffmpeg/youtube-dl error");
             }
-            AudioEntry newEntry = new AudioEntry(audioName, AudioEntry.AudioType.File, ctx.Member.Id, ctx.Message.Id.ToString());
+            AudioEntry newEntry = new AudioEntry(audioName, ".opus", AudioEntry.AudioType.File, ctx.Member.Id, ctx.Message.Id.ToString());
             AudioHelper.AddAudio(newEntry);
             AudioHelper.Save();
             await ctx.RespondAsync(String.Format("{0} Added {1}", DiscordEmoji.FromName(ctx.Client, ":white_check_mark:"), newEntry.Name));
@@ -649,21 +649,87 @@ namespace MedicBot
             }
 
             string downloadLink = ctx.Message.Attachments.First().Url;
+            string fileExtension = downloadLink.Substring(downloadLink.LastIndexOf('.'));
             using (WebClient client = new WebClient())
             {
-                client.DownloadFile(downloadLink, Path.Combine(AudioHelper.ResDirectory, audioName + ".opus"));
+                client.DownloadFile(downloadLink, Path.Combine(AudioHelper.ResDirectory, audioName + fileExtension));
             }
 
-            string filePath = Path.Combine(AudioHelper.ResDirectory, audioName + ".opus");
+            string filePath = Path.Combine(AudioHelper.ResDirectory, audioName + fileExtension);
             if (!File.Exists(filePath) || new FileInfo(filePath).Length == 0)
             {
                 await ctx.RespondAsync("Ses kaydı eklenemedi.");
                 throw new Exception("IO error");
             }
-            AudioEntry newEntry = new AudioEntry(audioName, AudioEntry.AudioType.File, ctx.Member.Id, ctx.Message.Id.ToString());
+            AudioEntry newEntry = new AudioEntry(audioName, fileExtension, AudioEntry.AudioType.File, ctx.Member.Id, ctx.Message.Id.ToString());
             AudioHelper.AddAudio(newEntry);
             AudioHelper.Save();
             await ctx.RespondAsync(String.Format("{0} Added {1}", DiscordEmoji.FromName(ctx.Client, ":white_check_mark:"), newEntry.Name));
+        }
+
+        [Command("add-collection")]
+        [Aliases("koleksiyon-ekle")]
+        [Description("Mesaja eklenti olarak eklenmesini istediğiniz sesleri ekleyin. Bir koleksiyon ismi girerseniz eklenen ses kayıtları o koleksiyona eklenecek.")]
+        public async Task AddCollection(
+            CommandContext ctx,
+            [Description("Oluşturulacak koleksiyon adı. Ses kayıtlarının isimleri zip içindeki dosya adlarından alınır.")][RemainingText]string collectionName)
+        {
+            if (ctx.Message.Attachments.Count != 1)
+            {
+                throw new ArgumentException();
+            }
+
+            string downloadLink = ctx.Message.Attachments.First().Url;
+            string fileExtension = downloadLink.Substring(downloadLink.LastIndexOf('.'));
+            if (fileExtension != ".7z")
+            {
+                throw new ArgumentException("This operation only supports 7z file format because it has proper UTF-8 support.");
+            }
+            bool addToCollection = true;
+            if (String.IsNullOrWhiteSpace(collectionName))
+            {
+                addToCollection = false;
+                collectionName = Path.GetFileNameWithoutExtension(Path.GetRandomFileName());
+            }
+            string collectionFolder = Path.Combine(AudioHelper.ResDirectory, "işlenecekler", collectionName);
+            Directory.CreateDirectory(collectionFolder);
+            string zipFilePath = Path.Combine(AudioHelper.ResDirectory, "işlenecekler", collectionFolder, collectionName + fileExtension);
+            using (WebClient client = new WebClient())
+            {
+                client.DownloadFile(downloadLink, zipFilePath);
+            }
+            string sevenZExecutableName = "7z";
+            if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux))
+            {
+                sevenZExecutableName += ".exe";
+            }
+            ProcessStartInfo psi = new ProcessStartInfo(sevenZExecutableName)
+            {
+                Arguments = "x \"" + zipFilePath + "\"",
+                WorkingDirectory = collectionFolder
+            };
+            Process.Start(psi).WaitForExit();
+            File.Delete(zipFilePath);
+            try
+            {
+                foreach (string audioPath in Directory.GetFiles(collectionFolder))
+                {
+                    File.Move(audioPath, Path.Combine(AudioHelper.ResDirectory, Path.GetFileName(audioPath)));
+                    AudioEntry newEntry = new AudioEntry(Path.GetFileNameWithoutExtension(audioPath), Path.GetExtension(audioPath), AudioEntry.AudioType.File, ctx.Member.Id, ctx.Message.Id.ToString());
+                    AudioHelper.AddAudio(newEntry);
+                    if (addToCollection)
+                    {
+                        AudioHelper.AddToCollection(collectionName, newEntry); 
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                await ctx.RespondAsync(ex.Message);
+                throw;
+            }
+            AudioHelper.Save();
+            Directory.Delete(collectionFolder);
         }
 
         private void FfmpegEdit(double startSec, double durationSec, string input, string output)
