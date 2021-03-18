@@ -16,4 +16,4 @@ You'll need to install libopus and libsodium for your system. You can refer to t
 The bot has two prefixes, `#` and `$` and it has built-in help for commands. Altough most things are written mainly in Turkish.
 
 I'm adding empty commits to get free money:
-This is commit 6.
+This is commit 7.
