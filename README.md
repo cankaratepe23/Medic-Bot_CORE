@@ -14,3 +14,6 @@ You will also need to have ffmpeg and youtube-dl installed on your system and av
 You'll need to install libopus and libsodium for your system. You can refer to the DSharpPlus documentation for help with this, but basically, if you're on Linux/Mac, you simply install them from your package manager; if you're on Windows, you'll need to get the binaries and put them next to your compiled executable. Additionally, the binaries for Windows are included in this repo, but may not be up to date.
 
 The bot has two prefixes, `#` and `$` and it has built-in help for commands. Altough most things are written mainly in Turkish.
+
+I'm adding empty commits to get free money:
+This is commit 1.
