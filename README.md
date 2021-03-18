@@ -3,6 +3,8 @@ If you want to run this bot on your own machine (for some reason?), you can clon
 
 The source is targeted for .NET Core 3.1 but you should be able to create your own project for whatever framework you have installed and the source code should work fine, as long as DSharpPlus is compatible.
 
+Note: I am planning on migrating to .NET 5 soon...
+
 This program currently uses DSharpPlus Nigthly, which means you might not able to `nuget restore` it easily. Nightly builds are available on MyGet, and you can get the links from DSharpPlus' GitHub repo. The repo is included in the `NuGet.Config` file, but you might wanna double check related issues before going mad.
 
 To run the bot, you'll need an environment variable called `Bot_Token` which is the token for the Discord bot application you intend to use.
