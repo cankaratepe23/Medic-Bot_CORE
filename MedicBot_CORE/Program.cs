@@ -134,19 +134,19 @@ namespace MedicBot
                 }
                 else if (messageContent.Contains("iftara") || messageContent.Contains("akşam ezanına"))
                 {
-                    DateTime iftarTime = GetIftarTime();
+                    DateTime iftarTime = GetIftarTime(cityScheduleLinks.Keys.Where(s => messageContent.ToLower().Contains(s)).FirstOrDefault());
                     TimeSpan timeLeft = iftarTime.Subtract(DateTime.UtcNow.AddHours(3));
                     await e.Channel.SendMessageAsync("Akşam ezanı " + iftarTime.ToString("HH:mm") + " saatinde okunuyor, yani " + (timeLeft.Hours == 0 ? "" : timeLeft.Hours + " saat ") + timeLeft.Minutes + " dakika kaldı.");
                 }
                 else if (messageContent.Contains("sahura"))
                 {
-                    DateTime imsakTime = GetImsakTime();
+                    DateTime imsakTime = GetImsakTime(cityScheduleLinks.Keys.Where(s => messageContent.ToLower().Contains(s)).FirstOrDefault());
                     TimeSpan timeLeft = imsakTime.Subtract(DateTime.UtcNow.AddHours(3));
                     await e.Channel.SendMessageAsync("İmsak " + imsakTime.ToString("HH:mm") + " saatinde, yani " + (timeLeft.Hours == 0 ? "" : timeLeft.Hours + " saat ") + timeLeft.Minutes + " dakika kaldı.");
                 }
                 else if (messageContent.Contains("okundu mu") || messageContent.Contains("kaçta oku"))
                 {
-                    DateTime iftarTime = GetIftarTime();
+                    DateTime iftarTime = GetIftarTime(cityScheduleLinks.Keys.Where(s => messageContent.ToLower().Contains(s)).FirstOrDefault());
                     if (iftarTime.Day == DateTime.Today.Day)
                     {
                         TimeSpan timeLeft = iftarTime.Subtract(DateTime.UtcNow.AddHours(3));
@@ -154,7 +154,7 @@ namespace MedicBot
                     }
                     else
                     {
-                        DateTime imsakTime = GetImsakTime();
+                        DateTime imsakTime = GetImsakTime(cityScheduleLinks.Keys.Where(s => messageContent.ToLower().Contains(s)).FirstOrDefault());
                         TimeSpan timeLeft = imsakTime.Subtract(DateTime.UtcNow.AddHours(3));
                         await e.Channel.SendMessageAsync("Okundu! Sahura " + (timeLeft.Hours == 0 ? "" : timeLeft.Hours + " saat ") + timeLeft.Minutes + " dakika kaldı.");
                     }
@@ -171,7 +171,7 @@ namespace MedicBot
             HttpListener listener = new HttpListener();
             if (!Debugger.IsAttached)
             {   // In production
-                listener.Prefixes.Add("http://*:3131/medicbotapi/"); 
+                listener.Prefixes.Add("http://*:3131/medicbotapi/");
             }
             else
             {   // Debugging
@@ -186,7 +186,7 @@ namespace MedicBot
 
         public static void ListenerCallback(IAsyncResult result)
         {
-            HttpListener listener = (HttpListener) result.AsyncState;
+            HttpListener listener = (HttpListener)result.AsyncState;
             // Call EndGetContext to complete the asynchronous operation.
             HttpListenerContext context = listener.EndGetContext(result);
             HttpListenerRequest request = context.Request;
@@ -221,7 +221,7 @@ namespace MedicBot
                 }
                 else
                 {
-                    
+
                     DiscordUser medicUser = discord.GetUserAsync(134336937224830977).Result;
                     if (playString.Length >= 6)
                     {
@@ -270,7 +270,7 @@ namespace MedicBot
             Console.ResetColor();
             if (e.Exception is ArgumentException)
             {
-                return commands.ExecuteCommandAsync(commands.CreateFakeContext(e.Context.User, e.Context.Channel, "#help " + e.Command.Name, e.Context.Prefix, commands.RegisteredCommands["help"], e.Command.Name)); 
+                return commands.ExecuteCommandAsync(commands.CreateFakeContext(e.Context.User, e.Context.Channel, "#help " + e.Command.Name, e.Context.Prefix, commands.RegisteredCommands["help"], e.Command.Name));
             }
             else if (e.Exception is AudioEntryNotFoundException)
             {
@@ -286,9 +286,21 @@ namespace MedicBot
             }
         }
 
-        private static DateTime GetImsakTime()
+        private static Dictionary<string, string> cityScheduleLinks = new Dictionary<string, string>()
         {
-            string response = new WebClient().DownloadString(@"https://namazvakitleri.diyanet.gov.tr/tr-TR/9541/istanbul-icin-namaz-vakti");
+            { "istanbul", @"https://namazvakitleri.diyanet.gov.tr/tr-TR/9541/istanbul-icin-namaz-vakti" },
+            { "izmir", @"https://namazvakitleri.diyanet.gov.tr/tr-TR/9560/izmir-icin-namaz-vakti" },
+            { "ordu", @"https://namazvakitleri.diyanet.gov.tr/tr-TR/9782/ordu-icin-namaz-vakti" },
+            { "antalya", @"https://namazvakitleri.diyanet.gov.tr/tr-TR/9225/antalya-icin-namaz-vakti" },
+            { "samsun", @"https://namazvakitleri.diyanet.gov.tr/tr-TR/9819/samsun-icin-namaz-vakti" },
+            { "kocaeli", @"https://namazvakitleri.diyanet.gov.tr/tr-TR/9654/kocaeli-icin-namaz-vakti"},
+            { "bursa", @"https://namazvakitleri.diyanet.gov.tr/tr-TR/9335/bursa-icin-namaz-vakti" },
+            { "bayburt", @"https://namazvakitleri.diyanet.gov.tr/tr-TR/9295/bayburt-icin-namaz-vakti"}
+        };
+
+        private static DateTime GetImsakTime(string city = "istanbul")
+        {
+            string response = new WebClient().DownloadString(cityScheduleLinks.GetValueOrDefault(city.ToLower()));
             var htmlDoc = new HtmlDocument();
             htmlDoc.LoadHtml(response);
             var imsakDiv = htmlDoc.DocumentNode.SelectSingleNode(@"/html/body/div[4]/div[3]/div[1]/section/div/div[2]/div/table/tbody/tr[1]/td[2]");
@@ -302,9 +314,13 @@ namespace MedicBot
             return imsakTime;
         }
 
-        private static DateTime GetIftarTime()
+        private static DateTime GetIftarTime(string city)
         {
-            string response = new WebClient().DownloadString(@"https://namazvakitleri.diyanet.gov.tr/tr-TR/9541/istanbul-icin-namaz-vakti");
+            if (string.IsNullOrWhiteSpace(city))
+            {
+                city = "istanbul";
+            }
+            string response = new WebClient().DownloadString(cityScheduleLinks.GetValueOrDefault(city.ToLower()));
             var htmlDoc = new HtmlDocument();
             htmlDoc.LoadHtml(response);
             var aksamDiv = htmlDoc.DocumentNode.SelectSingleNode(@"/html/body/div[4]/div[3]/div[1]/section/div/div[2]/div/table/tbody/tr[1]/td[6]");
