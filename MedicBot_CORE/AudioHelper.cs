@@ -54,6 +54,13 @@ namespace MedicBot
             SaveSettings();
         }
 
+        public static void Export()
+        {
+            using FileStream stream = File.Open("store.json", FileMode.Create);
+            StreamWriter streamWriter = new StreamWriter(stream);
+            streamWriter.Write(JsonConvert.SerializeObject(new object[] { AudioEntries, Aliases, AudioCollections, UniversalIntros, UserIntros }));
+        }
+
         private static void SaveStore()
         {
             using Stream stream = File.Open("store.medicbot", FileMode.Create);

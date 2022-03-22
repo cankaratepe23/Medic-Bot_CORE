@@ -1339,6 +1339,15 @@ namespace MedicBot
             await ctx.RespondAsync(AudioHelper.GetIntroDump());
         }
 
+        [Command("export")]
+        [Hidden]
+        [RequireOwner]
+        public async Task Export(CommandContext ctx)
+        {
+            AudioHelper.Export();
+            await ctx.RespondWithFileAsync(File.Open("store.json", FileMode.Open));
+        }
+
         public bool IsSafeServer(ulong guildId)
         {
             return File.ReadLines("safe-guilds.txt").Contains(guildId.ToString());
