@@ -59,6 +59,7 @@ namespace MedicBot
             using FileStream stream = File.Open("store.json", FileMode.Create);
             StreamWriter streamWriter = new StreamWriter(stream);
             streamWriter.Write(JsonConvert.SerializeObject(AudioEntries));
+            streamWriter.Flush();
         }
 
         private static void SaveStore()
