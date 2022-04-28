@@ -36,7 +36,11 @@ namespace MedicBot
             if (ctx.User.Id != 134336937224830977)
             {
                 DiscordUser medicUser = await ctx.Guild.GetMemberAsync(134336937224830977);
-                await ctx.RespondWithFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "res", "hahaha_no.gif"), "Bu komutu sadece " + medicUser.Mention + " kullanabilir.");
+                await ctx.RespondAsync(
+                    new DiscordMessageBuilder()
+                        .WithFile(File.Open(Path.Combine(Directory.GetCurrentDirectory(), "res", "hahaha_no.gif"), FileMode.Open))
+                        .WithContent("Bu komutu sadece " + medicUser.Mention + " kullanabilir.")
+                    );
                 return;
             }
             await ctx.Client.DisconnectAsync();
@@ -320,7 +324,7 @@ namespace MedicBot
                 Description = message,
                 Color = new DiscordColor("3498DB")
             };
-            await ctx.RespondAsync("", false, embedBuilder.Build());
+            await ctx.RespondAsync("", embedBuilder.Build());
         }
 
         [Command("clear")]
@@ -1004,7 +1008,7 @@ namespace MedicBot
             AudioEntry entry = AudioHelper.FindAudio(audioName);
 
             using FileStream fs = new FileStream(entry.Path, FileMode.Open);
-            await ctx.RespondWithFileAsync(fs);
+            await ctx.RespondAsync(new DiscordMessageBuilder().WithFile(fs));
         }
 
         [Command("mp3")]
@@ -1033,7 +1037,7 @@ namespace MedicBot
             Console.WriteLine("FFmpeg Done!");
             using (FileStream fs = new FileStream(mp3Path, FileMode.Open))
             {
-                await ctx.RespondWithFileAsync(fs);
+                await ctx.RespondAsync(new DiscordMessageBuilder().WithFile(fs));
             }
             File.Delete(mp3Path);
         }
@@ -1181,7 +1185,7 @@ namespace MedicBot
             {
                 wotd = TdkWord.GetWord(searchTerm);
             }
-            await ctx.RespondAsync(null, false, wotd.GetEmbed());
+            await ctx.RespondAsync("", wotd.GetEmbed());
             if (ctx.Member.VoiceState != null || ctx.Client.GetVoiceNext().GetConnection(ctx.Guild) != null)
             {
                 queuedEntries.Add(new AudioEntry(wotd.GetAudioUrl()));
@@ -1345,7 +1349,7 @@ namespace MedicBot
         public async Task Export(CommandContext ctx)
         {
             AudioHelper.Export();
-            await ctx.RespondWithFileAsync(File.Open("store.json", FileMode.Open));
+            await ctx.RespondAsync(new DiscordMessageBuilder().WithFile(File.Open("store.json", FileMode.Open)));
         }
 
         public bool IsSafeServer(ulong guildId)
